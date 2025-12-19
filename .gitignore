@@ -6,6 +6,12 @@
 # dotenv files
 .env
 
+# App settings with environment variables
+appsettings.json
+
+# Launch settings with environment variables
+Properties/launchSettings.json
+
 # User-specific files
 *.rsuser
 *.suo

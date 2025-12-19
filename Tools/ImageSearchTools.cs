@@ -1,0 +1,71 @@
+using Extensions;
+
+using Microsoft.Extensions.Options;
+
+using ModelContextProtocol.Server;
+
+using Options;
+
+using System.ComponentModel;
+using System.Text.Json;
+
+using image_mcp.Models;
+
+namespace Tools;
+
+
+[McpServerToolType]
+public static class ImageSearchTools
+{
+    [McpServerTool, Description("Search for images based on a query string and returns an array of image results.")]
+    public static async Task<IEnumerable<ImageResult>> SearchImages(
+        HttpClient client,
+        IOptions<ImageApiOptions> options,
+        [Description("The query string to search for images.")] string query)
+    {
+        try
+        {
+            var clientId = options.Value.ClientId;
+
+            const int perPage = 10;
+            const string contentFilter = "high";
+            const string orderBy = "relevant";
+
+            using var jsonDocument = await client.ReadJsonDocumentAsync($"search/photos?client_id={clientId}&per_page={perPage}&content_filter={contentFilter}&order_by={orderBy}&query={Uri.EscapeDataString(query)}");
+            var jsonElement = jsonDocument.RootElement;
+            var results = jsonElement.GetProperty("results").EnumerateArray();
+
+            if (!results.Any())
+            {
+                return Enumerable.Empty<ImageResult>();
+            }
+
+            var images = results
+                .Select(result => JsonSerializer.Deserialize<Image>(result.GetRawText()))
+                .Where(img => img != null)
+                .Select(img => new ImageResult
+                {
+                    Urls = img!.Urls,
+                    Description = img.Description,
+                    AltDescription = img.AltDescription
+                })
+                .ToList();
+
+            return images;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error searching images: {ex.Message}");
+            Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+
+            return new List<ImageResult>
+            {
+                new ImageResult
+                {
+                    Error = $"Error: {ex.Message}",
+                    Urls = new ImageUrls()
+                }
+            };
+        }
+    }
+}
