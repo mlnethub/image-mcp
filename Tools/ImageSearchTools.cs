@@ -6,7 +6,10 @@ using ModelContextProtocol.Server;
 
 using Options;
 
+using System;
 using System.ComponentModel;
+using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 using image_mcp.Models;
@@ -80,63 +83,105 @@ public static class ImageSearchTools
         try
         {
             var clientId = options.Value.ClientId;
+            var normalizedCount = Math.Clamp(count, 1, 5);
+            var normalizedOrientation = NormalizeOrientation(orientation);
+            var trimmedQuery = query?.Trim();
 
-            var url = $"photos/random?client_id={clientId}&count={count}&orientation={orientation}";
-            if (!string.IsNullOrWhiteSpace(query))
+            var urlBuilder = new StringBuilder($"photos/random?client_id={clientId}&count={normalizedCount}&orientation={normalizedOrientation}");
+            if (!string.IsNullOrEmpty(trimmedQuery))
             {
-                url += $"&query={Uri.EscapeDataString(query)}";
+                urlBuilder.Append("&query=");
+                urlBuilder.Append(Uri.EscapeDataString(trimmedQuery));
             }
+
+            var url = urlBuilder.ToString();
 
             using var jsonDocument = await client.ReadJsonDocumentAsync(url);
-            var jsonElement = jsonDocument.RootElement;
+            var root = jsonDocument.RootElement;
 
-            // When 'count' is provided, API returns an array.
-            // If API changes or somehow returns an object, we handle it loosely.
-            if (jsonElement.ValueKind == JsonValueKind.Array)
-            {
-                var results = jsonElement.EnumerateArray();
-                var images = results
-                    .Select(result => JsonSerializer.Deserialize<Image>(result.GetRawText()))
-                    .Where(img => img != null)
-                    .Select(img => new ImageResult
-                    {
-                        Urls = img!.Urls,
-                        Description = img.Description,
-                        AltDescription = img.AltDescription
-                    })
-                    .ToList();
-                return images;
-            }
-            else if (jsonElement.ValueKind == JsonValueKind.Object)
-            {
-                 var img = JsonSerializer.Deserialize<Image>(jsonElement.GetRawText());
-                 if (img != null)
-                 {
-                    return new List<ImageResult>
-                    {
-                        new ImageResult
-                        {
-                            Urls = img.Urls,
-                            Description = img.Description,
-                            AltDescription = img.AltDescription
-                        }
-                    };
-                 }
-            }
-
-            return Enumerable.Empty<ImageResult>();
+            return ParseResults(root);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error getting random images: {ex.Message}");
-            return new List<ImageResult>
+            return Enumerable.Empty<ImageResult>();
+        }
+
+        static string NormalizeOrientation(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
             {
-                new ImageResult
-                {
-                    Error = $"Error: {ex.Message}",
-                    Urls = new ImageUrls()
-                }
+                return "landscape";
+            }
+
+            var normalized = value.Trim().ToLowerInvariant();
+            switch (normalized)
+            {
+                case "landscape":
+                case "portrait":
+                case "squarish":
+                    return normalized;
+                default:
+                    Console.Error.WriteLine($"Unsupported orientation '{value}', falling back to 'landscape'.");
+                    return "landscape";
+            }
+        }
+
+        static IEnumerable<ImageResult> ParseResults(JsonElement root)
+        {
+            return root.ValueKind switch
+            {
+                JsonValueKind.Array => MapArray(root),
+                JsonValueKind.Object => MapObject(root),
+                _ => Enumerable.Empty<ImageResult>()
             };
+        }
+
+        static IEnumerable<ImageResult> MapArray(JsonElement root)
+        {
+            var results = new List<ImageResult>();
+
+            foreach (var element in root.EnumerateArray())
+            {
+                var mapped = MapElement(element);
+                if (mapped != null)
+                {
+                    results.Add(mapped);
+                }
+            }
+
+            return results;
+        }
+
+        static IEnumerable<ImageResult> MapObject(JsonElement element)
+        {
+            var mapped = MapElement(element);
+            return mapped != null
+                ? new[] { mapped }
+                : Enumerable.Empty<ImageResult>();
+        }
+
+        static ImageResult? MapElement(JsonElement element)
+        {
+            try
+            {
+                var image = JsonSerializer.Deserialize<Image>(element.GetRawText());
+                if (image == null)
+                {
+                    return null;
+                }
+
+                return new ImageResult
+                {
+                    Urls = image.Urls ?? new ImageUrls(),
+                    Description = image.Description,
+                    AltDescription = image.AltDescription
+                };
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
     }
 }

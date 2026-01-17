@@ -4,6 +4,8 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "image-mcp", "image-mcp.csproj", "{80B8230D-D6EF-BBD9-2B93-05283AE5C1A6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageMcp.Tests", "tests\ImageMcp.Tests\ImageMcp.Tests.csproj", "{3B6F2053-85A9-4E5C-BF02-3B02D0328E36}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{80B8230D-D6EF-BBD9-2B93-05283AE5C1A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80B8230D-D6EF-BBD9-2B93-05283AE5C1A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80B8230D-D6EF-BBD9-2B93-05283AE5C1A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B6F2053-85A9-4E5C-BF02-3B02D0328E36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B6F2053-85A9-4E5C-BF02-3B02D0328E36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B6F2053-85A9-4E5C-BF02-3B02D0328E36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B6F2053-85A9-4E5C-BF02-3B02D0328E36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

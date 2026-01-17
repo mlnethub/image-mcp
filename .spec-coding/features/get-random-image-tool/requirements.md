@@ -1,31 +1,31 @@
 # 需求规格说明书 - get-random-image-tool
 
 ## 1. 概述
-本功能旨在为 `image-mcp` 服务添加一个新的 MCP 工具 `get_random_image`。该工具允许用户（或 AI 代理）从 Unsplash 获取随机图片。该功能支持通过关键词、数量和方向进行筛选，旨在满足“寻找灵感”或“更换背景”等场景的需求。
+本功能针对现有的 `get_random_image` MCP 工具进行增强，使其在调用 Unsplash 随机图片接口时具备更完善的参数支持与稳健性，帮助调用方获取符合主题、数量与方向需求的视觉素材。
 
-## 2. 用户故事
-作为一名 MCP 客户端用户（或 AI 助手），我希望能够调用一个工具来获取随机的高质量图片，并且可以指定图片的主题（如“自然”）和方向（如“横向”作为壁纸），以便我可以快速获得视觉灵感或装饰性素材。
+## 2. 需求列表
 
-## 3. 功能需求
+### REQ-001 核心调用
+- 用户故事：作为一名 MCP 客户端用户或 AI 助手，我想要调用改进后的 `get_random_image` 获取随机图片，以便在需要灵感或替换背景时快速得到合适的素材。
+- 验收标准：
+	1. 当工具 `get_random_image` 被调用时，系统应向 Unsplash `/photos/random` 端点发起 GET 请求，并记录失败原因以便排查（例如日志或异常信息）。
+	2. 当请求被构建时，系统应使用 `ImageApiOptions` 中的 `BaseUrl` 和 `ClientId` 进行 URL 拼接与认证，并保持与现有配置兼容。
 
-### 3.1 核心功能 (REQ-001)
-*   **REQ-001-001**: 当工具 `get_random_image` 被调用时，系统 **必须** 向 Unsplash API 的 `/photos/random` 端点发起 HTTP GET 请求。
-*   **REQ-001-002**: 系统 **必须** 使用现有的 `ImageApiOptions` 配置中的 `BaseUrl` 和 `ClientId` 进行 API 认证和请求构建。
+### REQ-002 参数处理
+- 用户故事：作为调用方，我想要通过关键词、数量和方向参数控制返回的图片，以便获得符合上下文需求的结果集。
+- 验收标准：
+	1. 当调用包含 `query` 时，系统应将其去除首尾空白后 URL 编码，并作为 `query` 参数传递给 Unsplash。
+	2. 当调用包含 `count` 时，系统应将其作为 `count` 参数传递；当未提供时，系统应默认传递 `count=1`，并在代码中将其约束在 1 到 5 的范围内（超出范围时应用最接近的边界值）。
+	3. 当调用包含 `orientation` 且值为 `landscape`、`portrait` 或 `squarish`（不区分大小写）时，系统应将其标准化后作为 `orientation` 参数传递；当未提供时，系统应使用 `orientation=landscape`。
 
-### 3.2 参数处理 (REQ-002)
-*   **REQ-002-001 (方向筛选)**: 如果调用时提供了 `orientation` 参数（landscape, portrait, squarish），系统 **必须** 将其作为查询参数传递给 API。
-*   **REQ-002-002 (方向默认值)**: 如果调用时未提供 `orientation` 参数，系统 **必须** 默认使用 "landscape"（横向）。
-*   **REQ-002-003 (关键词筛选)**: 如果调用时提供了 `query` 参数，系统 **必须** 将其作为查询参数传递给 API，以限制随机图片的范围。
-*   **REQ-002-004 (数量控制)**: 如果调用时提供了 `count` 参数，系统 **必须** 将其传递给 API；若未提供，**必须** 默认为 1。
+### REQ-003 响应映射
+- 用户故事：作为调用方，我想要得到结构化的图片信息，以便后续处理或展示。
+- 验收标准：
+	1. 当 Unsplash 返回成功响应时，系统应将 JSON 解析为 `IEnumerable<ImageResult>`，无论响应根节点是数组还是单个对象。
+	2. 当解析单条或多条记录时，系统应确保 `ImageResult` 的 `Urls`、`Description`、`AltDescription` 字段从响应中正确映射；当字段缺失时，系统应提供安全的默认值（例如 null 或空字符串）。
 
-### 3.3 响应处理 (REQ-003)
-*   **REQ-003-001**: 系统 **必须** 将 Unsplash API 返回的 JSON 数据反序列化为 `IEnumerable<ImageResult>` 格式。
-*   **REQ-003-002**: 每个 `ImageResult` 对象 **必须** 包含图片的 URL（Regular, Small, Thumb 等）、描述（Description/AltDescription）。
-
-### 3.4 错误处理 (REQ-004)
-*   **REQ-004-001**: 如果 API 请求失败或没有返回数据，系统 **应当** 返回一个空的集合，而不是抛出未处理的异常，以保持与现有 `SearchImages` 工具行为一致。
-
-## 4. 验收标准
-1.  调用 `get_random_image` 且不带参数，应返回 1 张横向（landscape）的随机图片。
-2.  调用 `get_random_image` 并带参数 `query="cat"`, `orientation="portrait"`, `count=3`，应返回 3 张关于猫的竖屏图片。
-3.  工具的描述和参数注解应正确显示在 MCP 元数据中，以便大模型正确理解如何使用。
+### REQ-004 异常与稳健性
+- 用户故事：作为调用方，我想要工具在网络或 API 异常时表现稳定，以便上层应用可以优雅地处理失败场景。
+- 验收标准：
+	1. 当请求失败、响应无法解析或返回空内容时，系统应记录错误并返回一个空的 `IEnumerable<ImageResult>` 而非抛出未捕获异常。
+	2. 当 API 响应格式非预期（如返回对象而非数组）或 `count` 超出 API 限制时，系统应处理该情况并返回已解析的结果集合或空集合。

@@ -1,11 +1,24 @@
-# 任务清单
+# 实现任务清单 - get-random-image-tool
 
-- [x] **Task 1: 实现 GetRandomImages 方法** <!-- id: 1 -->
-    - 在 `Tools/ImageSearchTools.cs` 中添加 `GetRandomImages` 方法。
-    - 实现 API 请求构建逻辑（URL, 参数等）。
-    - 实现 JSON 响应解析逻辑（处理数组）。
-    - 确保包含正确的 MCP 特性 `[McpServerTool]` 和 `[Description]`。
-- [x] **Task 2: 验证与清理** <!-- id: 2 -->
-    - 验证项目编译通过。
-    - 尝试运行一次（通过 dotnet run 或检查无语法错误），确保功能可被正确加载。
-    - 移除或归档 spec 文档（如果不保留的话，通常保留作为文档）。
+- [x] 1.1 编写 MSTest 用例覆盖 count 钳制与默认值
+    - 使用自定义 HttpMessageHandler stub 断言发送到 Unsplash 的最终 count 在 1-5 范围内，并验证缺省值为 1（对应 REQ-002-002）。
+- [x] 1.2 编写 MSTest 用例覆盖 orientation 归一化
+    - 针对合法大小写与非法取值断言最终请求参数，小写合法值保留，非法值回退 landscape（对应 REQ-002-001、REQ-004-002）。
+- [x] 1.3 编写 MSTest 用例覆盖 query 修剪与编码
+    - 构造包含空白和特殊字符的 query，断言请求参数使用去空白后编码值（对应 REQ-002-001）。
+- [x] 1.4 编写 MSTest 用例覆盖 JSON 响应解析
+    - 模拟数组与单对象响应，断言输出集合大小与 Urls/Description/AltDescription 映射正确（对应 REQ-003-001、REQ-003-002、REQ-004-002）。
+- [x] 1.5 编写 MSTest 用例覆盖异常返回空集合逻辑
+    - 模拟 HttpRequestException 与 JSON 解析失败，断言返回空集合且不抛出未处理异常（对应 REQ-004-001）。
+- [x] 2.1 实现 count 钳制与默认逻辑
+    - 在 ImageSearchTools.GetRandomImages 中对输入 count 使用 Math.Clamp(1, 5) 并设置默认值 1，同步应用到请求参数（对应 REQ-002-002）。
+- [x] 2.2 实现 orientation 归一化与回退
+    - 统一将合法 orientation 转成小写并校验取值，非法值记录告警后回退 landscape（对应 REQ-002-001、REQ-004-002）。
+- [x] 2.3 实现 query 修剪与 URL 编码
+    - 去除 query 首尾空白，非空时进行 Uri.EscapeDataString 并附加请求参数（对应 REQ-002-001）。
+- [x] 2.4 调整请求构建确保 BaseUrl 拼接正确
+    - 使用 Uri 或安全拼接方式组合 BaseUrl 与 photos/random，并附加 client_id 等参数（对应 REQ-001-002）。
+- [x] 2.5 改进 JSON 解析适配数组与对象
+    - 使用 JsonDocument 判断根类型，统一映射到 List<ImageResult>，对缺失字段给出安全默认值（对应 REQ-003-001、REQ-003-002、REQ-004-002）。
+- [x] 2.6 增强异常处理与日志
+    - 捕获 HttpRequestException/JsonException，记录日志后返回空集合，保持与现有模式一致（对应 REQ-004-001）。
